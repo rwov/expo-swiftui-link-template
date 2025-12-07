@@ -1,22 +1,23 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
-import * as Linking from 'expo-linking';
-import { resolveScheme } from 'expo-linking';
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import * as Linking from "expo-linking";
+import { resolveScheme } from "expo-linking";
 
 const fallbackConfig = {
-  name: 'xbuild',
-  slug: 'xbuild',
-  scheme: 'expotest',
+  name: "xbuild",
+  slug: "xbuild",
+  scheme: "expotest",
   ios: {
-    bundleIdentifier: 'com.insightfull.Xbuild',
+    bundleIdentifier: "com.insightfull.Xbuild",
   },
 };
 
 // Merge any existing config (from native) with our required fields, ensuring a scheme is present.
-const existingConfig = (Constants.expoConfig as Record<string, unknown> | null | undefined) ?? {};
+const existingConfig =
+  (Constants.expoConfig as Record<string, unknown> | null | undefined) ?? {};
 const hasScheme = Boolean(
   (existingConfig as any).scheme ||
     (existingConfig as any)?.ios?.scheme ||
-    (existingConfig as any)?.android?.scheme,
+    (existingConfig as any)?.android?.scheme
 );
 
 const mergedConfig = {
@@ -31,17 +32,20 @@ const mergedConfig = {
 
 // Some RN/Expo bits read legacy properties; patch them defensively if writable.
 try {
-  Object.defineProperty(Constants, 'manifest', { value: mergedConfig });
-  Object.defineProperty(Constants, 'manifest2', { value: null });
-  Object.defineProperty(Constants, 'expoConfig', { value: mergedConfig });
+  Object.defineProperty(Constants, "manifest", { value: mergedConfig });
+  Object.defineProperty(Constants, "manifest2", { value: null });
+  Object.defineProperty(Constants, "expoConfig", { value: mergedConfig });
 } catch (_) {
   // noop
 }
 
 if (!hasScheme) {
-  console.info('[xbuild] Applied fallback Expo manifest with scheme', mergedConfig);
+  console.info(
+    "[xbuild] Applied fallback Expo manifest with scheme",
+    mergedConfig
+  );
 } else {
-  console.info('[xbuild] Verified Expo manifest has scheme', mergedConfig);
+  console.info("[xbuild] Verified Expo manifest has scheme", mergedConfig);
 }
 
 if (Constants.executionEnvironment !== ExecutionEnvironment.Bare) {
@@ -54,7 +58,10 @@ const probeResolveScheme = () => {
     resolveScheme({ isSilent: true });
   } catch (error) {
     if (__DEV__) {
-      console.warn('[xbuild] resolveScheme failed, re-applying fallback config', error);
+      console.warn(
+        "[xbuild] resolveScheme failed, re-applying fallback config",
+        error
+      );
     }
     // Reapply in case the manifest was empty when the first probe ran.
     (Constants as any).__rawManifest_TEST = mergedConfig as any;
@@ -71,34 +78,40 @@ const patchedCreateURL = (path: string, options?: Record<string, any>) => {
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message?.includes('no custom scheme defined')
+      error.message?.includes("no custom scheme defined")
     ) {
       (Constants as any).__rawManifest_TEST = mergedConfig as any;
-      return originalCreateURL(path, { ...options, scheme: mergedConfig.scheme } as any);
+      return originalCreateURL(path, {
+        ...options,
+        scheme: mergedConfig.scheme,
+      } as any);
     }
     throw error;
   }
 };
 
-const createURLDescriptor = Object.getOwnPropertyDescriptor(Linking, 'createURL');
+const createURLDescriptor = Object.getOwnPropertyDescriptor(
+  Linking,
+  "createURL"
+);
 const canPatchCreateURL =
   !createURLDescriptor ||
   createURLDescriptor.writable ||
-  typeof createURLDescriptor.set === 'function' ||
+  typeof createURLDescriptor.set === "function" ||
   createURLDescriptor.configurable;
 
 if (canPatchCreateURL) {
   try {
-    Object.defineProperty(Linking, 'createURL', {
+    Object.defineProperty(Linking, "createURL", {
       value: patchedCreateURL,
       configurable: createURLDescriptor?.configurable ?? true,
       writable: createURLDescriptor?.writable ?? true,
     });
   } catch (error) {
     if (__DEV__) {
-      console.warn('[xbuild] Failed to patch Linking.createURL', error);
+      console.warn("[xbuild] Failed to patch Linking.createURL", error);
     }
   }
 } else if (__DEV__) {
-  console.warn('[xbuild] Linking.createURL is not writable; skipping patch');
+  console.warn("[xbuild] Linking.createURL is not writable; skipping patch");
 }
