@@ -1,6 +1,6 @@
 {
   "name": "expo-test",
-  "main": "expo-router/entry",
+  "main": "./app/entry.ts",
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
